@@ -52,3 +52,30 @@ def builtin_exit(args):
 #       Each function receives a list of string arguments.
 #       Look at builtin_pwd above as an example to follow.
 # ---------------------------------------------------------------------------
+
+
+
+def builtin_touch(args):
+    if len(args) == 0:
+        print("Error you must enter a valid file name")
+        print("Usage: touch <file name>")
+        return
+
+    if len(args) > 1:
+        print("Error: you can only enter one valid file name")
+
+    file_name = args[0]
+    with open(file_name, "w") as f:
+        f.write("")
+
+
+#-------------------------------------------------------------------------------
+
+
+def builtin_echo(args):
+    if len (args) == 0:
+        print("Error: you must enter a valid argument")
+        print("Usage: echo <type argument here>")
+        return
+    else:
+        print(" ".join(args))
