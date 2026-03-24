@@ -73,9 +73,108 @@ def builtin_touch(args):
 
 
 def builtin_echo(args):
-    if len (args) == 0:
-        print("Error: you must enter a valid argument")
-        print("Usage: echo <type argument here>")
+    if len(args) == 0:
+        print("Error: echo requires at least one argument")
+        print("Usage: echo <text>")
         return
-    else:
-        print(" ".join(args))
+
+    print(" ".join(args))
+
+
+#-------------------------------------------------------------------------------
+
+def builtin_cd(args):
+    if len(args) == 0:
+        try:
+            os.chdir(os.path.expanduser("~"))
+        except Exception as e:
+            print(f"cd error: {e}")
+        return
+
+    if len(args) > 1:
+        print("Error: cd takes only one argument")
+        print("Usage: cd <path>")
+        return
+
+    path = args[0]
+
+    try:
+        path = os.path.expanduser(path)
+        os.chdir(path)
+
+    except FileNotFoundError:
+        print(f"cd: no such file or directory: {path}")
+    except NotADirectoryError:
+        print(f"cd: not a directory: {path}")
+    except PermissionError:
+        print(f"cd: permission denied: {path}")
+    except Exception as e:
+        print(f"cd error: {e}")
+
+#-------------------------------------------------------------------------------
+
+def builtin_procinfo(args):
+    try:
+        import psutil
+    except ImportError:
+        print("Error: psutil module is required. Install with: pip install psutil")
+        return
+
+    if len(args) == 0:
+        print("Error: procinfo requires a PID")
+        print("Usage: procinfo <pid>")
+        return
+
+    if len(args) > 1:
+        print("Error: procinfo takes only one argument")
+        print("Usage: procinfo <pid>")
+        return
+
+    try:
+        pid = int(args[0])
+    except ValueError:
+        print("Error: PID must be an integer")
+        return
+
+    try:
+        proc = psutil.Process(pid)
+
+        status = proc.status()
+        memory = proc.memory_info().rss  
+        cpu = proc.cpu_percent(interval=0.1)  
+        ppid = proc.ppid()
+
+        print(f"PID: {pid}")
+        print(f"Status: {status}")
+        print(f"CPU Usage: {cpu}%")
+        print(f"Memory Usage: {memory} bytes")
+        print(f"Parent PID: {ppid}")
+
+    except psutil.NoSuchProcess:
+        print(f"Error: No process with PID {pid}")
+    except psutil.AccessDenied:
+        print(f"Error: Access denied to process {pid}")
+    except Exception as e:
+        print(f"procinfo error: {e}")
+
+
+#-------------------------------------------------------------------------------
+
+
+def builtin_help(args):
+    """
+    Display a list of all available built-in commands and a brief description.
+    """
+    commands = {
+        "pwd": "Print the current working directory.",
+        "exit": "Exit the shell.",
+        "touch": "Create a new empty file. Usage: touch <file name>",
+        "echo": "Print text to the terminal. Usage: echo <text>",
+        "cd": "Change the current directory. Usage: cd <path>",
+        "procinfo": "Show information about a process. Usage: procinfo <pid>",
+        "help": "Show this help message listing all built-in commands."
+    }
+
+    print("Available built-in commands:\n")
+    for cmd, desc in commands.items():
+        print(f"{cmd:<10} - {desc}")
