@@ -13,7 +13,7 @@ import grp
 import os
 import subprocess
 
-from pysh.builtins import builtin_exit, builtin_pwd, builtin_touch, builtin_echo, builtin_cd, builtin_procinfo, builtin_help
+from pysh.builtins import builtin_exit, builtin_pwd, builtin_touch, builtin_echo, builtin_cd, builtin_procinfo, builtin_help, builtin_cat, builtin_head, builtin_wc
 from pysh.colors import BLUE, GREEN, RESET
 
 
@@ -63,6 +63,12 @@ def execute(command, args):
         builtin_procinfo(args)
     elif command == "help":
         builtin_help(args)
+    elif command == "cat":
+        builtin_cat(args)
+    elif command == "head":
+        builtin_head(args)
+    elif command == "wc":
+        builtin_wc(args)
     else:
         # Run external commands as a child process.
         # subprocess.run will search for the command on the system PATH,

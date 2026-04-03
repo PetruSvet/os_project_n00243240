@@ -84,78 +84,27 @@ def builtin_echo(args):
 #-------------------------------------------------------------------------------
 
 def builtin_cd(args):
-    if len(args) == 0:
-        try:
-            os.chdir(os.path.expanduser("~"))
-        except Exception as e:
-            print(f"cd error: {e}")
-        return
-
-    if len(args) > 1:
-        print("Error: cd takes only one argument")
-        print("Usage: cd <path>")
-        return
-
-    path = args[0]
-
+    path = args[0] if args else "~"
     try:
-        path = os.path.expanduser(path)
-        os.chdir(path)
-
-    except FileNotFoundError:
-        print(f"cd: no such file or directory: {path}")
-    except NotADirectoryError:
-        print(f"cd: not a directory: {path}")
-    except PermissionError:
-        print(f"cd: permission denied: {path}")
+        os.chdir(os.path.expanduser(path))
     except Exception as e:
-        print(f"cd error: {e}")
+        print(f"cd: {e}")
 
 #-------------------------------------------------------------------------------
 
 def builtin_procinfo(args):
-    try:
-        import psutil
-    except ImportError:
-        print("Error: psutil module is required. Install with: pip install psutil")
-        return
-
-    if len(args) == 0:
-        print("Error: procinfo requires a PID")
-        print("Usage: procinfo <pid>")
-        return
-
-    if len(args) > 1:
-        print("Error: procinfo takes only one argument")
+    if len(args) != 1:
         print("Usage: procinfo <pid>")
         return
 
     try:
         pid = int(args[0])
+        with open(f"/proc/{pid}/status") as f:
+            print(f.read())
     except ValueError:
         print("Error: PID must be an integer")
-        return
-
-    try:
-        proc = psutil.Process(pid)
-
-        status = proc.status()
-        memory = proc.memory_info().rss  
-        cpu = proc.cpu_percent(interval=0.1)  
-        ppid = proc.ppid()
-
-        print(f"PID: {pid}")
-        print(f"Status: {status}")
-        print(f"CPU Usage: {cpu}%")
-        print(f"Memory Usage: {memory} bytes")
-        print(f"Parent PID: {ppid}")
-
-    except psutil.NoSuchProcess:
+    except FileNotFoundError:
         print(f"Error: No process with PID {pid}")
-    except psutil.AccessDenied:
-        print(f"Error: Access denied to process {pid}")
-    except Exception as e:
-        print(f"procinfo error: {e}")
 
 
 #-------------------------------------------------------------------------------
@@ -178,3 +127,78 @@ def builtin_help(args):
     print("Available built-in commands:\n")
     for cmd, desc in commands.items():
         print(f"{cmd:<10} - {desc}")
+
+#-------------------------------------------------------------------------------
+
+def builtin_cat(args):
+    if not args:
+        print("Usage: cat <file> [file2 ...]")
+        return
+
+    for filename in args:
+        try:
+            with open(filename) as f:
+                print(f.read(), end="")
+        except FileNotFoundError:
+            print(f"cat: {filename}: No such file or directory")
+        except PermissionError:
+            print(f"cat: {filename}: Permission denied")
+
+#-------------------------------------------------------------------------------
+
+def builtin_head(args):
+    if not args:
+        print("Usage: head [-n N] <file>")
+        return
+
+    n = 10
+    if args[0] == "-n":
+        try:
+            n = int(args[1])
+            args = args[2:]
+        except (IndexError, ValueError):
+            print("head: -n requires a valid integer argument")
+            return
+
+    for filename in args:
+        try:
+            with open(filename) as f:
+                for line in f:
+                    if n <= 0:
+                        break
+                    print(line, end="")
+                    n -= 1
+        except FileNotFoundError:
+            print(f"head: {filename}: No such file or directory")
+        except PermissionError:
+            print(f"head: {filename}: Permission denied")
+
+#-------------------------------------------------------------------------------
+
+def builtin_wc(args):
+    if not args:
+        print("Usage: wc <file> [file2 ...]")
+        return
+
+    total_lines, total_words, total_chars = 0, 0, 0
+
+    for filename in args:
+        try:
+            with open(filename) as f:
+                content = f.read()
+            lines = content.count("\n")
+            words = len(content.split())
+            chars = len(content)
+            print(f"{lines:>8} {words:>8} {chars:>8} {filename}")
+            total_lines += lines
+            total_words += words
+            total_chars += chars
+        except FileNotFoundError:
+            print(f"wc: {filename}: No such file or directory")
+        except PermissionError:
+            print(f"wc: {filename}: Permission denied")
+
+    if len(args) > 1:
+        print(f"{total_lines:>8} {total_words:>8} {total_chars:>8} total")
+
+#-------------------------------------------------------------------------------
