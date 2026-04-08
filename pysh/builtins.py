@@ -11,6 +11,8 @@ Look at builtin_pwd below as a complete example to follow.
 
 import os
 import sys
+import psutil
+import time
 
 
 # ---------------------------------------------------------------------------
@@ -93,17 +95,30 @@ def builtin_cd(args):
 #-------------------------------------------------------------------------------
 
 def builtin_procinfo(args):
-    if len(args) != 1:
-        print("Usage: procinfo <pid>")
+    if len(args) != 1:                         # If the argument is not equal to 1
+        print("Usage: procinfo <pid>")         # Print out how to use the command
         return
 
     try:
-        pid = int(args[0])
-        with open(f"/proc/{pid}/status") as f:
-            print(f.read())
-    except ValueError:
+        pid = int(args[0])                     # the first element of the list of args given and convert the list of args into a int
+        with open(f"/proc/{pid}/status") as f: # "with" checks if the code associated finished running and closes the file if so
+            for line in f:
+                if line.startswith('State'):
+                    print(line.strip())
+                if line.startswith('VmRSS'):
+                    value = line.replace('VmRSS:', '').strip()
+                    print("Memory usage:", value)
+                if line.startswith('PPid'): 
+                    print(line.strip())
+        with open(f"/proc/{pid}/stat") as f:
+            data = f.read().split()
+            stime = int(data[14])
+            ticks_per_sec = os.sysconf(os.sysconf_names['SC_CLK_TCK'])
+            stime_seconds = stime / ticks_per_sec
+            print("Kernel CPU time (seconds):", stime_seconds)
+    except ValueError:                          # If the args enterted is not a number then the int function returns value error
         print("Error: PID must be an integer")
-    except FileNotFoundError:
+    except FileNotFoundError:                   # If the file being found does not exist then inform the user it doesnt
         print(f"Error: No process with PID {pid}")
 
 
@@ -202,3 +217,73 @@ def builtin_wc(args):
         print(f"{total_lines:>8} {total_words:>8} {total_chars:>8} total")
 
 #-------------------------------------------------------------------------------
+
+def builtin_sysinfo(args=None):
+    sort_by = "memory"
+    interval = 2
+
+    # Parse arguments
+    if args:
+        if "--sort" in args:
+            i = args.index("--sort")
+            if i + 1 < len(args):
+                sort_by = args[i + 1]
+
+        if "--interval" in args:
+            i = args.index("--interval")
+            if i + 1 < len(args):
+                interval = float(args[i + 1])
+
+    try:
+        while True:
+            os.system('cls' if os.name == 'nt' else 'clear')
+
+            # -------- MEMORY --------
+            mem = psutil.virtual_memory()
+            swap = psutil.swap_memory()
+
+            print("=== MEMORY ===")
+            print(f"Total:     {mem.total // (1024**2)} MB")
+            print(f"Used:      {mem.used // (1024**2)} MB")
+            print(f"Available: {mem.available // (1024**2)} MB")
+            print(f"Usage:     {mem.percent}%")
+
+            print("\n=== SWAP ===")
+            print(f"Total:     {swap.total // (1024**2)} MB")
+            print(f"Used:      {swap.used // (1024**2)} MB")
+            print(f"Free:      {swap.free // (1024**2)} MB")
+            print(f"Usage:     {swap.percent}%")
+
+            # -------- CPU --------
+            print("\n=== CPU ===")
+            print(f"Total CPU Usage: {psutil.cpu_percent()}%")
+
+            per_core = psutil.cpu_percent(percpu=True)
+            for i, usage in enumerate(per_core):
+                print(f"Core {i}: {usage}%")
+
+            # -------- PROCESSES --------
+            print("\n=== TOP PROCESSES ===")
+
+            processes = []
+            for p in psutil.process_iter(['pid', 'name', 'cpu_percent', 'memory_percent']):
+                try:
+                    processes.append(p.info)
+                except:
+                    pass
+
+            key = 'cpu_percent' if sort_by == 'cpu' else 'memory_percent'
+            processes = sorted(processes, key=lambda x: x[key], reverse=True)
+
+            print(f"{'PID':<8}{'Name':<20}{'CPU %':<10}{'MEM %':<10}")
+            print("-" * 50)
+
+            for p in processes[:10]:
+                print(f"{p['pid']:<8}{(p['name'] or '')[:18]:<20}{p['cpu_percent']:<10}{p['memory_percent']:.2f}")
+
+            time.sleep(interval)
+
+    except KeyboardInterrupt:
+        print("\nExiting sysinfo...")
+
+#-----------------------------------------------------------------------------------------------------------------------
