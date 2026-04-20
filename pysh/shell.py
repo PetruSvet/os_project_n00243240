@@ -13,7 +13,7 @@ import grp
 import os
 import subprocess
 
-from pysh.builtins import builtin_exit, builtin_pwd, builtin_touch, builtin_echo, builtin_cd, builtin_procinfo, builtin_help, builtin_cat, builtin_head, builtin_wc, builtin_sysinfo
+from pysh.builtins import builtin_exit, builtin_pwd, builtin_touch, builtin_echo, builtin_cd, builtin_procinfo, builtin_help, builtin_cat, builtin_head, builtin_wc, builtin_sysinfo, builtin_download
 from pysh.colors import BLUE, GREEN, RESET
 
 
@@ -71,6 +71,8 @@ def execute(command, args):
         builtin_wc(args)
     elif command == "sysinfo":
         builtin_sysinfo(args)
+    elif command == "download":
+        builtin_download(args)
     else:
         # Run external commands as a child process.
         # subprocess.run will search for the command on the system PATH,

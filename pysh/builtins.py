@@ -13,7 +13,11 @@ import os
 import sys
 import psutil
 import time
-
+import threading
+import queue
+import requests
+import os
+from urllib.parse import urlparse
 
 # ---------------------------------------------------------------------------
 # Example built-in: pwd
@@ -218,9 +222,9 @@ def builtin_wc(args):
 
 #-------------------------------------------------------------------------------
 
-def builtin_sysinfo(args=None):
+def builtin_sysinfo(args=None):   ##sysinfo --sort cpu
     sort_by = "memory"
-    interval = 2
+    interval = 2                  ##sorts processes by memory and refresh every 2 secs
 
     # Parse arguments
     if args:
@@ -279,11 +283,101 @@ def builtin_sysinfo(args=None):
             print("-" * 50)
 
             for p in processes[:10]:
-                print(f"{p['pid']:<8}{(p['name'] or '')[:18]:<20}{p['cpu_percent']:<10}{p['memory_percent']:.2f}")
+                print(f"{p['pid']:<8}{(p['name'] or '')[:18]:<20}{p['cpu_percent']:<10}{p['memory_percent']:.2f}") ## prints each process by PID, name (shortened to 18 characters only), cpu %, memory % (to 2 decimal places)
 
-            time.sleep(interval)
+            time.sleep(interval) ##waits before refreshing again 2 secs
 
     except KeyboardInterrupt:
-        print("\nExiting sysinfo...")
+        print("\nExiting sysinfo...") ##when user does ctrcl + c it stops the process
 
 #-----------------------------------------------------------------------------------------------------------------------
+
+download_queue = queue.Queue()
+completed_count = 0
+counter_lock = threading.Lock()
+workers = []
+active = False
+
+
+# -------- Worker Function (Consumer) --------
+def worker():
+    global completed_count
+
+    while True:
+        try:
+            url = download_queue.get(timeout=1)
+        except queue.Empty:
+            break  # No more work
+
+        try:
+            response = requests.get(url, timeout=5)
+            response.raise_for_status()
+
+            # Extract filename from URL
+            filename = os.path.basename(urlparse(url).path)
+            if not filename:
+                filename = "downloaded_file"
+
+            os.makedirs("downloads", exist_ok=True)
+            filepath = os.path.join("downloads", filename)
+
+            with open(filepath, "wb") as f:
+                f.write(response.content)
+
+            with counter_lock:
+                completed_count += 1
+
+            print(f"[✓] Downloaded: {filename}")
+
+        except Exception as e:
+            print(f"[!] Failed: {url} ({e})")
+
+        finally:
+            download_queue.task_done()
+
+
+# -------- Built-in Command --------
+def builtin_download(args=None):
+    global workers, active
+
+    if not args:
+        print("Usage: download <file> [-w num] OR download --status")
+        return
+
+    # -------- STATUS COMMAND --------
+    if "--status" in args:
+        print("\n=== DOWNLOAD STATUS ===")
+        print(f"Queued: {download_queue.qsize()}")
+        print(f"Workers: {len(workers)}")
+        print(f"Completed: {completed_count}")
+        print(f"Active: {any(w.is_alive() for w in workers)}")
+        return
+
+    # -------- START DOWNLOAD --------
+    file = args[0]
+    num_workers = 3
+
+    if "-w" in args:
+        i = args.index("-w")
+        if i + 1 < len(args):
+            num_workers = int(args[i + 1])
+
+    # Read URLs (Producer)
+    try:
+        with open(file, "r") as f:
+            for line in f:
+                url = line.strip()
+                if url:
+                    download_queue.put(url)
+    except FileNotFoundError:
+        print("File not found.")
+        return
+
+    # Start worker threads (Consumers)
+    workers = []
+    for _ in range(num_workers):
+        t = threading.Thread(target=worker, daemon=True)
+        t.start()
+        workers.append(t)
+
+    print(f"Started downloading with {num_workers} workers.")

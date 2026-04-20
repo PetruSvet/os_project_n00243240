@@ -1,0 +1,3 @@
+https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf
+https://speed.hetzner.de/100MB.bin
+https://via.placeholder.com/150
