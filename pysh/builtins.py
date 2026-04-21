@@ -285,11 +285,11 @@ def builtin_sysinfo(args=None):   ##sysinfo --sort cpu
             for p in processes[:10]:
                 print(f"{p['pid']:<8}{(p['name'] or '')[:18]:<20}{p['cpu_percent']:<10}{p['memory_percent']:.2f}") ## prints each process by PID, name (shortened to 18 characters only), cpu %, memory % (to 2 decimal places)
 
-            time.sleep(interval) ##waits before refreshing again 2 secs
+            time.sleep(interval) ## waits before refreshing again 2 secs
+
 
     except KeyboardInterrupt:
-        print("\nExiting sysinfo...") ##when user does ctrcl + c it stops the process
-
+        print("\nExiting sysinfo...") ## when user does ctrcl + c it stops the process
 #-----------------------------------------------------------------------------------------------------------------------
 
 download_queue = queue.Queue()
@@ -364,11 +364,13 @@ def builtin_download(args=None):
 
     # Read URLs (Producer)
     try:
-        with open(file, "r") as f:
+        while not download_queue.empty():
+            download_queue.get()
+
+        with open(file) as f:
             for line in f:
-                url = line.strip()
-                if url:
-                    download_queue.put(url)
+                download_queue.put(line.strip())
+                
     except FileNotFoundError:
         print("File not found.")
         return
@@ -379,5 +381,11 @@ def builtin_download(args=None):
         t = threading.Thread(target=worker, daemon=True)
         t.start()
         workers.append(t)
+
+    def monitor():
+        download_queue.join()
+        print("\nAll downloads completed.")
+
+        threading.Thread(target=monitor, daemon=True).start()
 
     print(f"Started downloading with {num_workers} workers.")

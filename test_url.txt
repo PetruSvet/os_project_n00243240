@@ -1,5 +1,5 @@
 https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-6.12.tar.xz
-https://cdimage.debian.org/debian-cd/current/amd64/iso-cd/debian-13.3.0-amd64-netinst.iso
+https://cdimage.debian.org/debian-cd/current/amd64/iso-cd/debian-amd64-netinst.iso
 https://ftp.gnu.org/gnu/make/make-4.4.1.tar.gz
 https://geo.mirror.pkgbuild.com/iso/latest/archlinux-x86_64.iso
 https://ftp.gnu.org/gnu/bash/bash-5.2.37.tar.gz
