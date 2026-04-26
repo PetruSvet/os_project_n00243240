@@ -17,6 +17,7 @@ import threading
 import queue
 import requests
 import os
+import platform
 from urllib.parse import urlparse
 
 # ---------------------------------------------------------------------------
@@ -140,12 +141,17 @@ def builtin_help(args):
         "echo": "Print text to the terminal. Usage: echo <text>",
         "cd": "Change the current directory. Usage: cd <path>",
         "procinfo": "Show information about a process. Usage: procinfo <pid>",
-        "help": "Show this help message listing all built-in commands."
+        "cat <file1> <file2>": "Read and display contents of one or more files",
+        "head <-n N> <file>": "Display the first <N> lines of a file",
+        "wc <file1> <file2>": "Count lines, words and characters in one or more files",
+        "sysinfo": "Shows real-time system resource usage",
+        "download <file> -w <number>": "Download files using worker threads",
+        "specs": "Show the operating system's hardware specifications",
     }
 
     print("Available built-in commands:\n")
     for cmd, desc in commands.items():
-        print(f"{cmd:<10} - {desc}")
+        print(f"{cmd:<30} - {desc}")
 
 #-------------------------------------------------------------------------------
 
@@ -292,14 +298,15 @@ def builtin_sysinfo(args=None):   ##sysinfo --sort cpu
         print("\nExiting sysinfo...") ## when user does ctrcl + c it stops the process
 #-----------------------------------------------------------------------------------------------------------------------
 
+
+
+
 download_queue = queue.Queue()
 completed_count = 0
 counter_lock = threading.Lock()
 workers = []
 active = False
 
-
-# -------- Worker Function (Consumer) --------
 def worker():
     global completed_count
 
@@ -336,7 +343,6 @@ def worker():
             download_queue.task_done()
 
 
-# -------- Built-in Command --------
 def builtin_download(args=None):
     global workers, active
 
@@ -344,7 +350,6 @@ def builtin_download(args=None):
         print("Usage: download <file> [-w num] OR download --status")
         return
 
-    # -------- STATUS COMMAND --------
     if "--status" in args:
         print("\n=== DOWNLOAD STATUS ===")
         print(f"Queued: {download_queue.qsize()}")
@@ -353,7 +358,6 @@ def builtin_download(args=None):
         print(f"Active: {any(w.is_alive() for w in workers)}")
         return
 
-    # -------- START DOWNLOAD --------
     file = args[0]
     num_workers = 3
 
@@ -362,7 +366,6 @@ def builtin_download(args=None):
         if i + 1 < len(args):
             num_workers = int(args[i + 1])
 
-    # Read URLs (Producer)
     try:
         while not download_queue.empty():
             download_queue.get()
@@ -375,7 +378,6 @@ def builtin_download(args=None):
         print("File not found.")
         return
 
-    # Start worker threads (Consumers)
     workers = []
     for _ in range(num_workers):
         t = threading.Thread(target=worker, daemon=True)
@@ -389,3 +391,31 @@ def builtin_download(args=None):
         threading.Thread(target=monitor, daemon=True).start()
 
     print(f"Started downloading with {num_workers} workers.")
+
+    #------------------------------------------------------------------------------------------------------
+
+def builtin_specs(args=None):
+    print("=== SYSTEM SPECS ===\n")
+
+    print("OS:", platform.system(), platform.release())
+    print("Kernel:", platform.version())
+
+    print("\n=== CPU ===")
+    print("Processor:", platform.processor())
+    print("Physical cores:", psutil.cpu_count(logical=False))
+    print("Logical cores:", psutil.cpu_count(logical=True))
+
+    freq = psutil.cpu_freq()
+    if freq:
+        print(f"Max Frequency: {freq.max:.2f} MHz")
+
+    print("\n=== MEMORY ===")
+    mem = psutil.virtual_memory()
+    print(f"Total RAM: {mem.total // (1024**3)} GB")
+
+    print("\n=== STORAGE ===")
+    disk = psutil.disk_usage('/')
+    print(f"Total Disk: {disk.total // (1024**3)} GB")
+
+    print("\n=== MACHINE ===")
+    print("Architecture:", platform.machine())
